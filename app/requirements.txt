@@ -1,0 +1,25 @@
+# General
+requests
+
+# Django
+Django
+django-timezone-field 
+django-cors-headers
+
+# Databases
+psycopg2-binary==2.9.1
+
+# File control
+Pillow
+django-cleanup
+
+# Prepocessing
+flashtext
+cyrtranslit
+django-ckeditor
+
+# Server
+gunicorn==20.1.0
+
+pandas
+numpy

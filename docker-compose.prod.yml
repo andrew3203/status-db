@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+
+  web:
+    container_name: web
+    build:
+      context: ./app
+      dockerfile: Dockerfile.prod
+    command: gunicorn abig.wsgi:application --bind :8082
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+      - media_volume:/home/app/web/mediafiles
+    expose:
+      - 8082
+    env_file:
+      - ./.env.prod
+
+  nginx:
+    container_name: nginx
+    build: ./nginx
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+      - media_volume:/home/app/web/mediafiles
+    ports:
+      - 8083:8083
+    depends_on:
+      - web
+  
+  big_db:
+    container_name: big_db
+    image: postgres:13.0-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.prod.db
+  
+
+networks:
+  default:
+    name: nginxproxymanager_default
+    external: true
+
+volumes:
+  static_volume:
+  media_volume:
+  postgres_data:
