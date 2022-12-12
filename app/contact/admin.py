@@ -67,8 +67,7 @@ FIELDSETS_DEFAULT = [
     }),
     ('', {
         'fields': (
-            ('telegram', 'tg_username'),
-            ('whatsapp',),
+            ('whatsapp', 'telegram', 'tg_username'),
             ('task', 'updated_at')
         ),
     }),
@@ -76,10 +75,9 @@ FIELDSETS_DEFAULT = [
 READONLY_FIELD_DEFAULT = ('created_at', 'updated_at')
 btr_args = {'change_form': True, 'html_attrs': {'style': 'background-color:#ff9966;color:black'}, 'label' : 'Импортировать контакты'}
 
-def _upload(self, request):
+def _upload(self, request, FormClass):
     if request.method == 'POST':
-        form = ContactForm(request.POST, request.FILES)
-        print(request.FILES)
+        form = FormClass(request.POST, request.FILES)
         if form.is_valid():
             try:
                 form.save()
@@ -95,7 +93,7 @@ def _upload(self, request):
             return render(request, 'admin/upload.html', {'form': form})
 
     else:
-        form = ContactForm()
+        form = FormClass()
         return render(request, 'admin/upload.html', {'form': form})
 
 
@@ -119,7 +117,7 @@ class RequestContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
 
     @button(**btr_args)
     def upload(self, request):
-        return _upload(self, request)
+        return _upload(self, request, RequestContactForm)
 
     def download(self, request, queryset):
         file, filename = _get_csv_from_qs_values(queryset.values())
@@ -130,7 +128,7 @@ class RequestContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
 
 
 @admin.register(YaContact)
-class YaContactAdmin(admin.ModelAdmin):
+class YaContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     list_display = LIST_FDISPLAY_DEFAULT + ['order_amount']
     search_fields = SEARCH_FIELDS_DEFAULT
     list_filter = LIST_FILTER_DEFAULT
@@ -143,26 +141,50 @@ class YaContactAdmin(admin.ModelAdmin):
             }
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
+    URL = f'admin:{YaContact._meta.app_label}_{YaContact._meta.model_name}_changelist'
+
+    @button(**btr_args)
+    def upload(self, request):
+        return _upload(self, request, YaContactForm)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+
+    actions = [download]
+    download.short_description = 'Выгрузить контакты'
 
 
 @admin.register(LinkedinContact)
-class LinkedinContactAdmin(admin.ModelAdmin):
-    list_display = LIST_FDISPLAY_DEFAULT + ['profile_link']
-    search_fields = SEARCH_FIELDS_DEFAULT
-    list_filter = LIST_FILTER_DEFAULT
+class LinkedinContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+    list_display = LIST_FDISPLAY_DEFAULT + ['profile_link', 'company_field']
+    search_fields = SEARCH_FIELDS_DEFAULT + ['company_field']
+    list_filter = LIST_FILTER_DEFAULT + ['company_field']
     
     fieldsets = FIELDSETS_DEFAULT + \
         [('', {
             'fields': (
-                ('profile_link',),
+                ('profile_link', 'company_field'),
                 ),
             }
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
+    URL = f'admin:{LinkedinContact._meta.app_label}_{LinkedinContact._meta.model_name}_changelist'
+
+    @button(**btr_args)
+    def upload(self, request):
+        return _upload(self, request, LinkedinContactForm)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+
+    actions = [download]
+    download.short_description = 'Выгрузить контакты'
 
 
 @admin.register(TsumContact)
-class TsumContactAdmin(admin.ModelAdmin):
+class TsumContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     list_display = LIST_FDISPLAY_DEFAULT + ['name']
     search_fields = SEARCH_FIELDS_DEFAULT + ['name']
     list_filter = LIST_FILTER_DEFAULT + ['name']
@@ -175,26 +197,22 @@ class TsumContactAdmin(admin.ModelAdmin):
             }
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
+    URL = f'admin:{TsumContact._meta.app_label}_{TsumContact._meta.model_name}_changelist'
+
+    @button(**btr_args)
+    def upload(self, request):
+        return _upload(self, request, TsumContactForm)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+
+    actions = [download]
+    download.short_description = 'Выгрузить контакты'
 
 
 @admin.register(PropertyContact)
-class TsumContactAdmin(admin.ModelAdmin):
-    list_display = LIST_FDISPLAY_DEFAULT + ['company_field', 'name']
-    search_fields = SEARCH_FIELDS_DEFAULT + ['company_field', 'name']
-    list_filter = LIST_FILTER_DEFAULT + ['company_field', 'name']
-    
-    fieldsets = FIELDSETS_DEFAULT + \
-        [('', {
-            'fields': (
-                ('name', 'company_field',),
-                ),
-            }
-        )]
-    readonly_fields = READONLY_FIELD_DEFAULT
-
-
-@admin.register(VillageContact)
-class VillageContactAdmin(admin.ModelAdmin):
+class PropertyContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     list_display = LIST_FDISPLAY_DEFAULT + ['name']
     search_fields = SEARCH_FIELDS_DEFAULT + ['name']
     list_filter = LIST_FILTER_DEFAULT + ['name']
@@ -207,6 +225,46 @@ class VillageContactAdmin(admin.ModelAdmin):
             }
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
+    URL = f'admin:{PropertyContact._meta.app_label}_{PropertyContact._meta.model_name}_changelist'
+
+    @button(**btr_args)
+    def upload(self, request):
+        return _upload(self, request, PropertyContactForm)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+
+    actions = [download]
+    download.short_description = 'Выгрузить контакты'
+
+
+@admin.register(VillageContact)
+class VillageContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+    list_display = LIST_FDISPLAY_DEFAULT + ['name']
+    search_fields = SEARCH_FIELDS_DEFAULT + ['name']
+    list_filter = LIST_FILTER_DEFAULT + ['name']
+    
+    fieldsets = FIELDSETS_DEFAULT + \
+        [('', {
+            'fields': (
+                ('name',),
+                ),
+            }
+        )]
+    readonly_fields = READONLY_FIELD_DEFAULT
+    URL = f'admin:{VillageContact._meta.app_label}_{VillageContact._meta.model_name}_changelist'
+
+    @button(**btr_args)
+    def upload(self, request):
+        return _upload(self, request, VillageContactForm)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+
+    actions = [download]
+    download.short_description = 'Выгрузить контакты'
 
 
 admin.site.site_header = 'STATUS Админ панель'

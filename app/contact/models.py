@@ -129,6 +129,11 @@ class LinkedinContact(Contact):
         verbose_name = 'Профиль',
         max_length=512
     )
+    company_field = models.CharField(
+        verbose_name = 'Деятельность',
+        max_length=512,
+        blank=True, null=True
+    )
 
     class Meta:
         verbose_name = 'Контакт'
@@ -150,11 +155,6 @@ class PropertyContact(Contact):
     name = models.CharField(
         verbose_name = 'Название ЖК',
         max_length=512
-    )
-    company_field = models.CharField(
-        verbose_name = 'Деятельность',
-        max_length=512,
-        blank=True, null=True
     )
 
     class Meta: 
