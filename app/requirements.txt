@@ -23,3 +23,5 @@ gunicorn==20.1.0
 
 pandas
 numpy
+
+django-admin-extra-buttons

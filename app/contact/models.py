@@ -92,6 +92,11 @@ class Contact(models.Model):
 
 
 class RequestContact(Contact):
+    source = models.CharField(
+        verbose_name = 'Источник',
+        max_length=512,
+        blank=True, null=True
+    )
     
     class Meta:
         verbose_name = 'Контакт'
@@ -133,7 +138,8 @@ class LinkedinContact(Contact):
 class TsumContact(Contact):
     name = models.CharField(
         verbose_name = 'Название бренда',
-        max_length=512
+        max_length=512,
+        blank=True, null=True
     )
 
     class Meta:
@@ -147,7 +153,8 @@ class PropertyContact(Contact):
     )
     company_field = models.CharField(
         verbose_name = 'Деятельность',
-        max_length=512
+        max_length=512,
+        blank=True, null=True
     )
 
     class Meta: 
@@ -158,7 +165,8 @@ class PropertyContact(Contact):
 class VillageContact(Contact):
     name = models.CharField(
         verbose_name = 'Название поселка',
-        max_length=512
+        max_length=512,
+        blank=True, null=True
     )
     class Meta:
         verbose_name = 'Контакт'

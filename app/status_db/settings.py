@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
 
-    'contact.apps.ContactConfig'
+    'contact.apps.ContactConfig',
+
+    'admin_extra_buttons'
 ]
 
 MIDDLEWARE = [
