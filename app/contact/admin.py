@@ -10,6 +10,7 @@ from django.contrib.admin import SimpleListFilter
 from contact.models import *
 from contact.forms import *
 from contact.uploader import _get_csv_from_qs_values
+from django.contrib import messages
 
 
 class PhoneFilter(SimpleListFilter):
@@ -82,7 +83,7 @@ def _upload(self, request, FormClass):
             try:
                 form.save()
             except Exception as e:
-                self.message_user(request, e)
+                self.message_user(request, e, level=messages.ERROR)
                 return render(request, 'admin/upload.html', {'form': form})
 
             self.message_user(request, 'Контакты успешно ипортированы!')

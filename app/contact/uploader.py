@@ -44,7 +44,7 @@ def load_data(instance, file_path, extra_fields=[], **kwargs):
         ('tg_username_from_table', 'tg_username_filed', 'tg_username'),
         ('country_from_table', 'country_name_field', 'country'),
         ('city_from_table', 'city_name_field', 'city'),
-        ('adres_from_table', 'adres_name_field', 'addres'),
+        ('addres_from_table', 'addres_name_field', 'addres'),
         ('phone_name_filed', 'phone_name_filed', ''),
         ('email_name_filed', 'email_name_filed', ''),
         ('fio_name_filed', 'fio_name_filed', ''),
@@ -57,17 +57,18 @@ def load_data(instance, file_path, extra_fields=[], **kwargs):
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         # check fields
-        columns = list(df.columns)
+        columns = list(map(lambda x: x.strip(), df.columns))
+        df.columns = columns
         for k, v, _ in fields:
             if kwargs[k] and kwargs[v] not in columns:
-                raise Exception(kwargs[v], sheet_name)
+                raise Exception(f'Поле `{kwargs[v]}` не найдено на листе `{sheet_name}`')
         # parse data
         res = df.apply(
             lambda el: parse_info(el, kwargs[fields[-3][1]], kwargs[fields[-2][1]], kwargs[fields[-1][1]]),
             axis=1, result_type='expand'
         )
         # load data
-        for k, v, name in fields[:-2]:
+        for k, v, name in fields[:-3]:
             res[name] = df[kwargs[v]] if kwargs[k] else kwargs.get(v)
         res['whatsapp'] = kwargs.pop('whatsapp')
         res['telegram'] = res['tg_username'].isnull()

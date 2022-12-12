@@ -27,7 +27,7 @@ class ContactForm(forms.Form):
 
     file = forms.FileField(
         label='Данные',
-        help_text='В формате cvs или xlsx',
+        help_text='В формате xlsx',
         required=True
     )
 
@@ -56,7 +56,7 @@ class ContactForm(forms.Form):
         help_text='Если не указано, то страна будет взята из поля ниже',
         initial=False, required=False
     )
-    country_name_field= forms.BooleanField(
+    country_name_field= forms.CharField(
         label='Страна',
         help_text='Страна контактов или название поля в файле',
         required=True
