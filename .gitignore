@@ -128,4 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-redis-data/
+redis_data/
+redis_data
