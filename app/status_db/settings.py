@@ -148,7 +148,7 @@ MEDIA_ROOT = BASE_DIR / "mediafiles"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -----> CELERY
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://stredis:6379')
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://stredis:6378')
 BROKER_URL = REDIS_URL
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
