@@ -28,6 +28,7 @@ def load_data(instance_str, file_path, extra_fields=[], **kwargs):
     print('- - - LOAD - - - ', os.path.exists(file_path), file_path)
     xlsx = pd.ExcelFile(file_path)
     sheet_names =  [e for e in xlsx.sheet_names if e != 'hiddenSheet']
+    print(sheet_names)
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         # check fields

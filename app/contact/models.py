@@ -124,6 +124,7 @@ class YaContact(Contact):
         verbose_name = 'Контакт'
         verbose_name_plural = 'База Яндекс'
 
+
 class LinkedinContact(Contact):
     profile_link = models.CharField(
         verbose_name = 'Профиль',

@@ -4,6 +4,8 @@ from django.core.files.storage import default_storage
 from contact.uploader import load_data
 from status_db.settings import MEDIA_ROOT
 import os
+from contact.models import TaskType
+from contact import tasks
 
 class ContactForm(forms.Form):
     phone_name_filed= forms.CharField(
@@ -200,3 +202,18 @@ class VillageContactForm(ContactForm):
         super().save()
         extra_fields = [('name_from_table', 'name_name_field', 'name')]
         load_data('VillageContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
+
+
+class SetTaskForm(forms.Form):
+    _instance_str = forms.CharField(widget=forms.HiddenInput)
+    _selected_action = forms.CharField(widget=forms.MultipleHiddenInput)
+    task = forms.ChoiceField(
+        label='Тип задачи',
+        choices=TaskType.choices
+    )
+
+    def save(self):
+        contact_ids = self.data['_selected_action']
+        task = self.data['task']
+        instance_str = self.data['_instance_str']
+        tasks.set_task.delay(task=task, instance_str=instance_str, contact_ids=contact_ids)

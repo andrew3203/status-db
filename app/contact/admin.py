@@ -83,6 +83,7 @@ FIELDSETS_DEFAULT = [
 ]
 READONLY_FIELD_DEFAULT = ('created_at', 'updated_at')
 btr_args = {'change_form': True, 'html_attrs': {'style': 'background-color:#ff9966;color:black'}, 'label' : 'Импортировать контакты'}
+btr_args2 = {'change_form': True, 'html_attrs': {'style': 'background-color:#88FF88;color:black'}, 'label' : 'Обновить страницу'}
 
 def _upload(self, request, FormClass):
     if request.method == 'POST':
@@ -108,8 +109,36 @@ def _upload(self, request, FormClass):
 
 
 
+class BaseContact(ExtraButtonsMixin, admin.ModelAdmin):
+   
+    @button(**btr_args2)
+    def refresh(self, request):
+        self.message_user(request, 'Страница обновлена')
+        return HttpResponseRedirectToReferrer(request)
+
+    def download(self, request, queryset):
+        file, filename = _get_csv_from_qs_values(queryset.values())
+        return FileResponse(file, filename=filename)
+    
+    def set_task(self, request, queryset):
+        if 'apply' in request.POST:
+            SetTaskForm(request.POST).save()
+            model_name = queryset.model._meta.model_name
+            self.message_user(request, 'Задача успешно!')
+            return HttpResponseRedirect(reverse(f'admin:contact_{model_name}_changelist'))
+        else:
+            contact_ids = queryset.values_list('pk', flat=True)
+            instance_str = queryset.model.__name__
+            form =  SetTaskForm(initial={'_selected_action': contact_ids, '_instance_str': instance_str })
+            return render(request, "admin/task_type.html", {'form': form})
+
+    actions = [download, set_task]
+    download.short_description = 'Выгрузить контакты'
+    set_task.short_description = 'Назначить задачу'
+
+
 @admin.register(RequestContact)
-class RequestContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class RequestContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['source']
     search_fields = SEARCH_FIELDS_DEFAULT
     list_filter = LIST_FILTER_DEFAULT
@@ -129,16 +158,9 @@ class RequestContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     def upload(self, request):
         return _upload(self, request, RequestContactForm)
 
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
-
 
 @admin.register(YaContact)
-class YaContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class YaContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['order_amount']
     search_fields = SEARCH_FIELDS_DEFAULT
     list_filter = LIST_FILTER_DEFAULT
@@ -157,16 +179,9 @@ class YaContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     def upload(self, request):
         return _upload(self, request, YaContactForm)
 
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
-
 
 @admin.register(LinkedinContact)
-class LinkedinContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class LinkedinContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['profile_link', 'company_field']
     search_fields = SEARCH_FIELDS_DEFAULT + ['company_field']
     list_filter = LIST_FILTER_DEFAULT + ['company_field']
@@ -184,17 +199,10 @@ class LinkedinContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     @button(**btr_args)
     def upload(self, request):
         return _upload(self, request, LinkedinContactForm)
-
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
-
+    
 
 @admin.register(TsumContact)
-class TsumContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class TsumContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['name']
     search_fields = SEARCH_FIELDS_DEFAULT + ['name']
     list_filter = LIST_FILTER_DEFAULT + ['name']
@@ -212,17 +220,10 @@ class TsumContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     @button(**btr_args)
     def upload(self, request):
         return _upload(self, request, TsumContactForm)
-
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
-
+    
 
 @admin.register(PropertyContact)
-class PropertyContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class PropertyContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['name']
     search_fields = SEARCH_FIELDS_DEFAULT + ['name']
     list_filter = LIST_FILTER_DEFAULT + ['name']
@@ -241,16 +242,9 @@ class PropertyContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     def upload(self, request):
         return _upload(self, request, PropertyContactForm)
 
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
-
 
 @admin.register(VillageContact)
-class VillageContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class VillageContactAdmin(BaseContact):
     list_display = LIST_FDISPLAY_DEFAULT + ['name']
     search_fields = SEARCH_FIELDS_DEFAULT + ['name']
     list_filter = LIST_FILTER_DEFAULT + ['name']
@@ -269,12 +263,6 @@ class VillageContactAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     def upload(self, request):
         return _upload(self, request, VillageContactForm)
 
-    def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
-
-    actions = [download]
-    download.short_description = 'Выгрузить контакты'
 
 
 admin.site.site_header = 'STATUS Админ панель'

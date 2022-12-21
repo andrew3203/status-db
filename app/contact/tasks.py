@@ -8,6 +8,7 @@ import io
 from status_db.celery import app
 from celery.utils.log import get_task_logger
 from django.apps import apps
+from django.db.models import Min, Q, Count
 
 
 logger = get_task_logger(__name__)
@@ -50,6 +51,7 @@ def load_data_task(instance_str, file_path, fields, **kwargs):
     print(instance_str, file_path,)
     xlsx = pd.ExcelFile(file_path)
     sheet_names =  [e for e in xlsx.sheet_names if e  != 'hiddenSheet']
+    print(sheet_names)
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         df.columns = list(map(lambda x: x.strip(), df.columns))
@@ -62,15 +64,37 @@ def load_data_task(instance_str, file_path, fields, **kwargs):
         # load data
         for k, v, name in fields[:-3]:
             res[name] = df[kwargs[v]] if kwargs[k] else kwargs.get(v)
-        res['whatsapp'] = kwargs.pop('whatsapp')
-        res['telegram'] = res['tg_username'].isnull()
+        res['whatsapp'] = kwargs.get('whatsapp')
+        res['telegram'] = pd.notna(res['tg_username'])
         # save data
         instance = apps.get_model(app_label='contact', model_name=instance_str)
         for _, row in res.iterrows():
             instance.objects.create(**row.to_dict()).save()
+        
+    # drop duplecates
+    duplicates = (
+        instance.objects.values('tel', 'email')
+        .order_by()
+        .annotate(min_id=Min('id'), count_id=Count('id'))
+        .filter(count_id__gt=1)
+    )
+
+    fields_lookup = Q()
+    duplicate_fields_values = duplicates.values('tel', 'email')
+    for val in duplicate_fields_values:
+        fields_lookup |= Q(**val)
+    min_ids_list = duplicates.values_list('min_id', flat=True)
+
+    if fields_lookup:
+        instance.objects.filter(fields_lookup).exclude(id__in=min_ids_list).delete()
+    
+
     
     os.remove(file_path)
     logger.info(f"- - - - FINISH loading - - - -")
 
-
-
+@app.task(ignore_result=True)
+def set_task(task, instance_str, contact_ids):
+    # TODO: save one first 3 (or less) elemenst
+    instance = apps.get_model(app_label='contact', model_name=instance_str)
+    instance.objects.filter(pk__in=contact_ids).update(task=task)
