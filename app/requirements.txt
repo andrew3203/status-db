@@ -5,6 +5,12 @@ requests
 Django
 django-timezone-field 
 django-cors-headers
+django-debug-toolbar
+
+# Distributed tasks
+celery
+redis
+django-celery-beat
 
 # Databases
 psycopg2-binary==2.9.1
@@ -23,5 +29,6 @@ gunicorn==20.1.0
 
 pandas
 numpy
+openpyxl
 
 django-admin-extra-buttons

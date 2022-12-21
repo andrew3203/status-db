@@ -5,41 +5,13 @@ import re
 import os
 import io
 import csv
+from contact.tasks import load_data_task
 
 
-MAIL = "[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}"
-PHONE = "((?:\+\d{2}[-\.\s]??|\d{4}[-\.\s]??)?(?:\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4}|\d{3}[-\.\s]??\d{4}))"
 
-def _parse_phone(x):
-    if x is not None:
-        x1 = str(x)
-        x1 = re.sub('(\()|(\))|(\s+)', '', x1)
-        if len(x1) == len('9978255'):
-            return '8495' + x1
-        elif x1[0] == '8' and not x[:4] == '8495':
-            return '+7' + x1[1:]
-        elif x1[0] == '7':
-            return '+' + x1
-    return x
-
-def parse_info(el, phone_name_filed, email_name_filed, fio_name_filed):
-    raw_phones = re.sub('\(|\)|-| |\+', '', str(el[phone_name_filed]))
-    phones = list(
-        map(
-            lambda phone: _parse_phone(phone), 
-            re.findall(PHONE, raw_phones)
-        )
-    )
-    mails = re.findall(MAIL, str(el[email_name_filed]))
-    fio = re.sub('\(|\)|-|\+|[a-z0-9]|\\n', '', str(el[fio_name_filed]))
-    phones = phones + [None]*(3-len(phones))
-    mails = mails + [None]*(3-len(mails))  
-    data = pd.Series({'fio': fio, 'tel': phones[0], 'tel2': phones[1], 'email': mails[0],'email2': mails[1]})
-    return data
-
-
-def load_data(instance, file_path, extra_fields=[], **kwargs):
+def load_data(instance_str, file_path, extra_fields=[], **kwargs):
     # define fields
+    kwargs.pop('file')
     fields = extra_fields + [
         ('tg_username_from_table', 'tg_username_filed', 'tg_username'),
         ('country_from_table', 'country_name_field', 'country'),
@@ -49,32 +21,27 @@ def load_data(instance, file_path, extra_fields=[], **kwargs):
         ('email_name_filed', 'email_name_filed', ''),
         ('fio_name_filed', 'fio_name_filed', ''),
     ]
-    if (kwargs['tg_username_from_table'] and len(kwargs['tg_username_filed']) < 3) or (not kwargs['tg_username_from_table']):
+    if (kwargs['tg_username_from_table'] and len(kwargs['tg_username_filed']) < 3) \
+        or (not kwargs['tg_username_from_table']):
         kwargs.pop('tg_username_filed')
 
+    print('- - - LOAD - - - ', os.path.exists(file_path), file_path)
     xlsx = pd.ExcelFile(file_path)
-    sheet_names = xlsx.sheet_names
+    sheet_names =  [e for e in xlsx.sheet_names if e != 'hiddenSheet']
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         # check fields
-        columns = list(map(lambda x: x.strip(), df.columns))
-        df.columns = columns
+        df.columns = list(map(lambda x: x.strip(), df.columns))
         for k, v, _ in fields:
-            if kwargs[k] and kwargs[v] not in columns:
-                raise Exception(f'Поле `{kwargs[v]}` не найдено на листе `{sheet_name}`')
-        # parse data
-        res = df.apply(
-            lambda el: parse_info(el, kwargs[fields[-3][1]], kwargs[fields[-2][1]], kwargs[fields[-1][1]]),
-            axis=1, result_type='expand'
-        )
-        # load data
-        for k, v, name in fields[:-3]:
-            res[name] = df[kwargs[v]] if kwargs[k] else kwargs.get(v)
-        res['whatsapp'] = kwargs.pop('whatsapp')
-        res['telegram'] = res['tg_username'].isnull()
-        # save data
-        for _, row in res.iterrows():
-            instance.objects.create(**row.to_dict()).save()
+            if kwargs[k] and kwargs[v] not in df.columns:
+                raise Exception(f'Поле `{kwargs[v]}` не найдено на листе `{sheet_name}`', df.columns)
+    
+    load_data_task.delay(
+        instance_str=instance_str,
+        file_path=file_path,
+        fields=fields,
+        **kwargs
+    )
        
 
 

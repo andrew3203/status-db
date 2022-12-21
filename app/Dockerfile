@@ -9,17 +9,21 @@ WORKDIR /usr/src/app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# install psycopg2 dependencies
+# install dependencies
 RUN apk update \
-    && apk add postgresql-dev gcc python3-dev musl-dev
+    && apk add --virtual build-deps gcc python3-dev musl-dev \
+    && apk add postgresql \
+    && apk add postgresql-dev \
+    && pip install psycopg2 \
+    && apk add jpeg-dev zlib-dev libjpeg \
+    && apk del build-deps
 
 RUN apk add --no-cache libstdc++ && \
     apk add --no-cache g++ && \
     ln -s /usr/include/locale.h /usr/include/xlocale.h
 
-RUN apk add -u zlib-dev jpeg-dev gcc musl-dev
 RUN echo "@testing http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-RUN apk add --update --no-cache py3-numpy py3-pandas@testing
+RUN apk add --no-cache py3-numpy py3-pandas@testing
 
 # install dependencies
 RUN pip install --upgrade pip
@@ -30,6 +34,8 @@ RUN pip install -r requirements.txt
 COPY ./entrypoint.sh .
 RUN sed -i 's/\r$//g' /usr/src/app/entrypoint.sh
 RUN chmod +x /usr/src/app/entrypoint.sh
+
+RUN mkdir /usr/src/app/mediafiles
 
 # copy project
 COPY . .

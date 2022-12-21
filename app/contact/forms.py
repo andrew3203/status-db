@@ -2,8 +2,8 @@ from django import forms
 from contact.models import *
 from django.core.files.storage import default_storage
 from contact.uploader import load_data
-from status_db.settings import MEDIA_URL
-
+from status_db.settings import MEDIA_ROOT
+import os
 
 class ContactForm(forms.Form):
     phone_name_filed= forms.CharField(
@@ -84,10 +84,15 @@ class ContactForm(forms.Form):
         required=True
     )
     def save(self):
-        file_path = f'{MEDIA_URL}/data.xlsx'
+        file_path = f'{MEDIA_ROOT}/data.xlsx'
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        print('PRE SAVE', os.path.exists(file_path), file_path)
         with open(file_path, 'wb+') as destination:
             for chunk in self.cleaned_data['file'].chunks():
                 destination.write(chunk)
+        print('PRE SAVE', os.path.exists(file_path), file_path)
 
 
 class RequestContactForm(ContactForm):
@@ -105,7 +110,7 @@ class RequestContactForm(ContactForm):
     def save(self):
         super().save()
         extra_fields = [('source_from_table', 'source_name_field', 'source')]
-        load_data(RequestContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('RequestContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
 
 
 class YaContactForm(ContactForm):
@@ -118,7 +123,7 @@ class YaContactForm(ContactForm):
     def save(self):
         super().save()
         extra_fields = [('order_amount_name_field', 'order_amount_name_field', 'order_amount')]
-        load_data(YaContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('YaContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
 
 
 class LinkedinContactForm(ContactForm):
@@ -139,7 +144,7 @@ class LinkedinContactForm(ContactForm):
             ('profile_link_name_field', 'profile_link_name_field', 'profile_link'),
             ('company_field_name_field', 'company_field_name_field', 'company_field'),
         ]
-        load_data(LinkedinContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('LinkedinContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
 
     
 class TsumContactForm(ContactForm):
@@ -157,7 +162,7 @@ class TsumContactForm(ContactForm):
     def save(self):
         super().save()
         extra_fields = [('name_from_table', 'name_name_field', 'name')]
-        load_data(TsumContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('TsumContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
 
 
 class PropertyContactForm(ContactForm):
@@ -175,7 +180,7 @@ class PropertyContactForm(ContactForm):
     def save(self):
         super().save()
         extra_fields = [('name_from_table', 'name_name_field', 'name')]
-        load_data(TsumContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('PropertyContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)
 
     
 
@@ -194,4 +199,4 @@ class VillageContactForm(ContactForm):
     def save(self):
         super().save()
         extra_fields = [('name_from_table', 'name_name_field', 'name')]
-        load_data(TsumContact, f'{MEDIA_URL}/data.xlsx', extra_fields, **self.cleaned_data)
+        load_data('VillageContact', f'{MEDIA_ROOT}/data.xlsx', extra_fields, **self.cleaned_data)

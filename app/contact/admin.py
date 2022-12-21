@@ -11,6 +11,14 @@ from contact.models import *
 from contact.forms import *
 from contact.uploader import _get_csv_from_qs_values
 from django.contrib import messages
+from django_celery_beat.models import PeriodicTask, IntervalSchedule, SolarSchedule, CrontabSchedule, ClockedSchedule
+
+
+admin.site.unregister(PeriodicTask)
+admin.site.unregister(IntervalSchedule)
+admin.site.unregister(SolarSchedule)
+admin.site.unregister(CrontabSchedule)
+admin.site.unregister(ClockedSchedule)
 
 
 class PhoneFilter(SimpleListFilter):
@@ -83,10 +91,11 @@ def _upload(self, request, FormClass):
             try:
                 form.save()
             except Exception as e:
+                print(e)
                 self.message_user(request, e, level=messages.ERROR)
                 return render(request, 'admin/upload.html', {'form': form})
 
-            self.message_user(request, 'Контакты успешно ипортированы!')
+            self.message_user(request, 'Ипморт контактов запущен!')
             url = reverse(self.URL)
             return HttpResponseRedirect(url)
 

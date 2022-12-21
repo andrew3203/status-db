@@ -1,17 +1,31 @@
 version: '3.8'
 
 services:
-  web:
+
+  stweb:
     build: ./app
+    container_name: stweb
     command: python manage.py runserver 0.0.0.0:8080
     volumes:
-      - ./app/:/usr/src/app/
+      - media_volume:/usr/src/app/mediafiles
     ports:
       - 8081:8080
     env_file:
       - ./.env.dev
     depends_on:
       - stdb
+  
+  stcelery:
+    build: ./app
+    container_name: stcelery
+    command: celery -A status_db worker --loglevel=INFO
+    volumes:
+      - media_volume:/usr/src/app/mediafiles
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - stredis
+      - stweb
 
   stdb:
     container_name: stdb
@@ -22,6 +36,13 @@ services:
       - POSTGRES_USER=stdb_usr
       - POSTGRES_PASSWORD=stdb_usr_pwd
       - POSTGRES_DB=stdb
+  
+  stredis:
+    image: redis:alpine
+    container_name: stredis
+    volumes:
+      - ./redis_data:/data
 
 volumes:
   postgres_data:
+  media_volume:
