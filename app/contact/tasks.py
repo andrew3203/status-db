@@ -8,7 +8,8 @@ import io
 from status_db.celery import app
 from celery.utils.log import get_task_logger
 from django.apps import apps
-from django.db.models import Min, Q, Count
+from django.db.models import Count, CharField, Value
+from django.db.models.functions import Concat
 
 
 logger = get_task_logger(__name__)
@@ -46,6 +47,19 @@ def parse_info(el, phone_name_filed, email_name_filed, fio_name_filed):
 
 
 @app.task(ignore_result=True)
+def drop_duplecates(instance_str):
+    Model = apps.get_model(app_label='contact', model_name=instance_str)
+    dublecates = (
+        Model.objects.exclude(tel = '', email = '')
+        .filter(tel__isnull = False, email__isnull = False)
+        .values('tel', 'email')
+        .annotate(comp_string = Count(Concat('tel', Value(' '), 'email', output_field=CharField())) )
+        .filter(comp_string__gt=1)
+    )
+    dublecates.delete()
+    
+
+@app.task(ignore_result=True)
 def load_data_task(instance_str, file_path, fields, **kwargs):
     logger.info(f"- - - - START loading - - - -")
     print(instance_str, file_path,)
@@ -70,31 +84,37 @@ def load_data_task(instance_str, file_path, fields, **kwargs):
         instance = apps.get_model(app_label='contact', model_name=instance_str)
         for _, row in res.iterrows():
             instance.objects.create(**row.to_dict()).save()
-        
-    # drop duplecates
-    duplicates = (
-        instance.objects.values('tel', 'email')
-        .order_by()
-        .annotate(min_id=Min('id'), count_id=Count('id'))
-        .filter(count_id__gt=1)
-    )
 
-    fields_lookup = Q()
-    duplicate_fields_values = duplicates.values('tel', 'email')
-    for val in duplicate_fields_values:
-        fields_lookup |= Q(**val)
-    min_ids_list = duplicates.values_list('min_id', flat=True)
-
-    if fields_lookup:
-        instance.objects.filter(fields_lookup).exclude(id__in=min_ids_list).delete()
-    
-
+    drop_duplecates.delay(instance_str=instance_str)
     
     os.remove(file_path)
     logger.info(f"- - - - FINISH loading - - - -")
 
 @app.task(ignore_result=True)
 def set_task(task, instance_str, contact_ids):
-    # TODO: save one first 3 (or less) elemenst
     instance = apps.get_model(app_label='contact', model_name=instance_str)
     instance.objects.filter(pk__in=contact_ids).update(task=task)
+
+@app.task(ignore_result=True)
+def load_tg_wh(instance_str, data_type, file_path):
+    xlsx = pd.ExcelFile(file_path)
+    sheet_names =  [e for e in xlsx.sheet_names if e != 'hiddenSheet']
+    df = pd.read_excel(xlsx, sheet_names[0])
+    df.columns = list(map(lambda x: x.strip().lower(), df.columns))
+
+    instance = apps.get_model(app_label='contact', model_name=instance_str)
+
+    if data_type == 'WhatsApp':
+        instance.objects.filter(tel__in=df['phone_number'].to_list()).update(whatsapp=True)
+    else:
+        for row in df.iterrows():
+            instance.objects.filter(tel=row['phone_number']).update(
+                telegram=True,
+                tg_username=row['username']
+            )
+    
+    
+
+
+
+    

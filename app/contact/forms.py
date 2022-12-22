@@ -4,6 +4,7 @@ from django.core.files.storage import default_storage
 from contact.uploader import load_data
 from status_db.settings import MEDIA_ROOT
 import os
+import pandas as pd
 from contact.models import TaskType
 from contact import tasks
 
@@ -29,7 +30,7 @@ class ContactForm(forms.Form):
 
     file = forms.FileField(
         label='Данные',
-        help_text='В формате xlsx',
+        help_text='В формате xlsx/csv',
         required=True
     )
 
@@ -90,11 +91,13 @@ class ContactForm(forms.Form):
         if os.path.exists(file_path):
             os.remove(file_path)
         
-        print('PRE SAVE', os.path.exists(file_path), file_path)
-        with open(file_path, 'wb+') as destination:
-            for chunk in self.cleaned_data['file'].chunks():
-                destination.write(chunk)
-        print('PRE SAVE', os.path.exists(file_path), file_path)
+        if self.cleaned_data['file'].name.rsplit('.', 1)[-1].lower() == 'csv':
+            df = pd.read_csv(self.cleaned_data['file'])
+            df.to_excel(file_path)
+        else:
+            with open(file_path, 'wb+') as destination:
+                for chunk in self.cleaned_data['file'].chunks():
+                    destination.write(chunk)
 
 
 class RequestContactForm(ContactForm):
@@ -217,3 +220,37 @@ class SetTaskForm(forms.Form):
         task = self.data['task']
         instance_str = self.data['_instance_str']
         tasks.set_task.delay(task=task, instance_str=instance_str, contact_ids=contact_ids)
+        return len(contact_ids)
+
+
+class LoadTgWhForm(forms.Form):
+    _instance_str = forms.CharField(widget=forms.HiddenInput)
+    file = forms.FileField(
+        label='Данные',
+        help_text='В формате xlsx/csv',
+        required=True
+    )
+    data_type = forms.ChoiceField(
+        label='Тип данных',
+        help_text='Для загрузки данных Telegram необходимо 2 колонки: `username`, `phone_number`. При загрузки данных WhatsApp необходимо 1 поле - `phone_number`',
+        choices=[('WhatsApp', 'WhatsApp'), ('Telegram', 'Telegram')],
+        required=True
+    )
+
+    def save(self):
+        file_path = f'{MEDIA_ROOT}/tg_wh.xlsx'
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        if self.cleaned_data['file'].name.rsplit('.', 1)[-1].lower() == 'csv':
+            df = pd.read_csv(self.cleaned_data['file'])
+            df.to_excel(file_path)
+        else:
+            with open(file_path, 'wb+') as destination:
+                for chunk in self.cleaned_data['file'].chunks():
+                    destination.write(chunk)
+        tasks.load_tg_wh.delay(
+            instance_str=self.data['_instance_str'], 
+            data_type=self.data['data_type'], 
+            file_path=file_path
+        )

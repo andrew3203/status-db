@@ -24,11 +24,10 @@ def load_data(instance_str, file_path, extra_fields=[], **kwargs):
     if (kwargs['tg_username_from_table'] and len(kwargs['tg_username_filed']) < 3) \
         or (not kwargs['tg_username_from_table']):
         kwargs.pop('tg_username_filed')
+        
 
-    print('- - - LOAD - - - ', os.path.exists(file_path), file_path)
     xlsx = pd.ExcelFile(file_path)
     sheet_names =  [e for e in xlsx.sheet_names if e != 'hiddenSheet']
-    print(sheet_names)
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         # check fields
@@ -44,9 +43,6 @@ def load_data(instance_str, file_path, extra_fields=[], **kwargs):
         **kwargs
     )
        
-
-
-
 
 
 def _get_csv_from_qs_values(queryset, filename: str = 'contacts'):
@@ -70,4 +66,19 @@ def _get_csv_from_qs_values(queryset, filename: str = 'contacts'):
     # set a filename with file's extension
     buf.name = f"{filename}__{datetime.now().strftime('%Y.%m.%d.%H.%M')}.csv"
 
+    return buf, buf.name
+
+
+def _get_xlsx_from_qs_values(queryset, filename: str = 'contacts'):
+    buf = io.BytesIO()
+    df = pd.DataFrame(list(queryset))
+    df.created_at = df.created_at.apply(lambda x: x.strftime('%Y-%m-%d %X'))
+    df.updated_at = df.updated_at.apply(lambda x: x.strftime('%Y-%m-%d %X'))
+
+    writer = pd.ExcelWriter(buf, engine='xlsxwriter')
+    df.to_excel(writer, sheet_name='Лист 1')
+    writer.save()
+
+    buf.seek(0)
+    buf.name = f"{filename}__{datetime.now().strftime('%Y.%m.%d.%H.%M')}.xlsx"
     return buf, buf.name

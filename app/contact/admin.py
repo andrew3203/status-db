@@ -1,15 +1,13 @@
 from django.contrib import admin
-from django.http import HttpResponseRedirect, HttpResponseServerError, HttpResponse, FileResponse
+from django.http import HttpResponseRedirect, FileResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.urls import reverse
-from admin_extra_buttons.api import ExtraButtonsMixin, button, confirm_action, link, view
+from admin_extra_buttons.api import ExtraButtonsMixin, button
 from admin_extra_buttons.utils import HttpResponseRedirectToReferrer
-from django.views.decorators.clickjacking import xframe_options_sameorigin
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin import SimpleListFilter
 from contact.models import *
 from contact.forms import *
-from contact.uploader import _get_csv_from_qs_values
+from contact.uploader import _get_xlsx_from_qs_values
 from django.contrib import messages
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, SolarSchedule, CrontabSchedule, ClockedSchedule
 
@@ -84,6 +82,8 @@ FIELDSETS_DEFAULT = [
 READONLY_FIELD_DEFAULT = ('created_at', 'updated_at')
 btr_args = {'change_form': True, 'html_attrs': {'style': 'background-color:#ff9966;color:black'}, 'label' : 'Импортировать контакты'}
 btr_args2 = {'change_form': True, 'html_attrs': {'style': 'background-color:#88FF88;color:black'}, 'label' : 'Обновить страницу'}
+btr_args3 = {'change_form': True, 'html_attrs': {'style': 'background-color:#34ebeb;color:black'}, 'label' : 'Telegram/WhatsApp'}
+
 
 def _upload(self, request, FormClass):
     if request.method == 'POST':
@@ -97,15 +97,31 @@ def _upload(self, request, FormClass):
                 return render(request, 'admin/upload.html', {'form': form})
 
             self.message_user(request, 'Ипморт контактов запущен!')
-            url = reverse(self.URL)
-            return HttpResponseRedirect(url)
-
+            return HttpResponseRedirect(reverse(self.URL))
         else:
             return render(request, 'admin/upload.html', {'form': form})
-
     else:
         form = FormClass()
         return render(request, 'admin/upload.html', {'form': form})
+
+def _load_wh_tg(self, request, instance_str):
+    if request.method == 'POST':
+        form = LoadTgWhForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                form.save()
+            except Exception as e:
+                print(e)
+                self.message_user(request, e, level=messages.ERROR)
+                return render(request, 'admin/load_wh_tg.html', {'form': form})
+
+            self.message_user(request, f'Загрузка запущена')
+            return HttpResponseRedirect(reverse(self.URL))
+        else:
+            return render(request, 'admin/load_wh_tg.html', {'form': form})
+    else:
+        form =  LoadTgWhForm(initial={'_instance_str': instance_str })
+        return render(request, "admin/load_wh_tg.html", {'form': form})
 
 
 
@@ -117,17 +133,21 @@ class BaseContact(ExtraButtonsMixin, admin.ModelAdmin):
         return HttpResponseRedirectToReferrer(request)
 
     def download(self, request, queryset):
-        file, filename = _get_csv_from_qs_values(queryset.values())
-        return FileResponse(file, filename=filename)
+        file, filename = _get_xlsx_from_qs_values(queryset.values())
+        #return FileResponse(file, filename=filename)
+        response = StreamingHttpResponse(file, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        return response
     
     def set_task(self, request, queryset):
         if 'apply' in request.POST:
-            SetTaskForm(request.POST).save()
+            num = SetTaskForm(request.POST).save()
             model_name = queryset.model._meta.model_name
-            self.message_user(request, 'Задача успешно!')
+            self.message_user(request, f'Задача для {num} контактов присвоена!')
             return HttpResponseRedirect(reverse(f'admin:contact_{model_name}_changelist'))
         else:
-            contact_ids = queryset.values_list('pk', flat=True)
+            contact_ids = list(queryset.values_list('pk', flat=True))
+            print(len(contact_ids))
             instance_str = queryset.model.__name__
             form =  SetTaskForm(initial={'_selected_action': contact_ids, '_instance_str': instance_str })
             return render(request, "admin/task_type.html", {'form': form})
@@ -154,6 +174,10 @@ class RequestContactAdmin(BaseContact):
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{RequestContact._meta.app_label}_{RequestContact._meta.model_name}_changelist'
 
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'RequestContact')
+
     @button(**btr_args)
     def upload(self, request):
         return _upload(self, request, RequestContactForm)
@@ -174,6 +198,10 @@ class YaContactAdmin(BaseContact):
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{YaContact._meta.app_label}_{YaContact._meta.model_name}_changelist'
+
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'YaContact')
 
     @button(**btr_args)
     def upload(self, request):
@@ -196,6 +224,10 @@ class LinkedinContactAdmin(BaseContact):
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{LinkedinContact._meta.app_label}_{LinkedinContact._meta.model_name}_changelist'
 
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'LinkedinContact')
+
     @button(**btr_args)
     def upload(self, request):
         return _upload(self, request, LinkedinContactForm)
@@ -216,6 +248,10 @@ class TsumContactAdmin(BaseContact):
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{TsumContact._meta.app_label}_{TsumContact._meta.model_name}_changelist'
+
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'TsumContact')
 
     @button(**btr_args)
     def upload(self, request):
@@ -238,6 +274,10 @@ class PropertyContactAdmin(BaseContact):
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{PropertyContact._meta.app_label}_{PropertyContact._meta.model_name}_changelist'
 
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'PropertyContact')
+
     @button(**btr_args)
     def upload(self, request):
         return _upload(self, request, PropertyContactForm)
@@ -258,6 +298,10 @@ class VillageContactAdmin(BaseContact):
         )]
     readonly_fields = READONLY_FIELD_DEFAULT
     URL = f'admin:{VillageContact._meta.app_label}_{VillageContact._meta.model_name}_changelist'
+
+    @button(**btr_args3)
+    def load_wh_tg(self, request):
+        return _load_wh_tg(self, request, 'VillageContact')
 
     @button(**btr_args)
     def upload(self, request):
