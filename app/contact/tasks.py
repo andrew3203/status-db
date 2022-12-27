@@ -8,7 +8,7 @@ import io
 from status_db.celery import app
 from celery.utils.log import get_task_logger
 from django.apps import apps
-from django.db.models import Count, CharField, Value
+from django.db.models import Count, CharField, Value, F
 from django.db.models.functions import Concat
 
 
@@ -48,28 +48,37 @@ def parse_info(el, phone_name_filed, email_name_filed, fio_name_filed):
 
 @app.task(ignore_result=True)
 def drop_duplecates(instance_str):
+    print(f"- - - - Start find dublicates - - - -")
     Model = apps.get_model(app_label='contact', model_name=instance_str)
+    Model.objects.filter(tel = '', email = '').delete()
+    Model.objects.filter(tel__isnull = True, email__isnull = True).delete()
+
     dublecates = (
-        Model.objects.exclude(tel = '', email = '')
-        .filter(tel__isnull = False, email__isnull = False)
-        .values('tel', 'email')
-        .annotate(comp_string = Count(Concat('tel', Value(' '), 'email', output_field=CharField())) )
+        Model.objects.all().values('tel', 'email')
+        .annotate(comp_string = Count(Concat('tel', Value(' '), 'email', output_field=CharField())))
         .filter(comp_string__gt=1)
     )
-    dublecates.delete()
+    for el in iter(dublecates):
+        if el['tel'] and el['email']:
+            pk_query = Model.objects.filter(tel=el['tel'], email=el['email']).order_by('pk').values_list('pk')
+        elif el['tel']:
+            pk_query = Model.objects.filter(tel=el['tel']).order_by('pk').values_list('pk')
+        else:
+            pk_query = Model.objects.filter(email=el['email']).order_by('pk').values_list('pk')
+        
+        Model.objects.filter(pk__in=pk_query[1:]).delete()
+            
+    print(f"- - - - DELETED {dublecates.count()} dublecates  - - - -")
     
 
 @app.task(ignore_result=True)
 def load_data_task(instance_str, file_path, fields, **kwargs):
     logger.info(f"- - - - START loading - - - -")
-    print(instance_str, file_path,)
     xlsx = pd.ExcelFile(file_path)
     sheet_names =  [e for e in xlsx.sheet_names if e  != 'hiddenSheet']
-    print(sheet_names)
     for sheet_name in sheet_names:
         df = pd.read_excel(xlsx, sheet_name)
         df.columns = list(map(lambda x: x.strip(), df.columns))
-        print(' - - - - - - - - - - - - - ', df.columns)
         # parse data
         res = df.apply(
             lambda el: parse_info(el, kwargs[fields[-3][1]], kwargs[fields[-2][1]], kwargs[fields[-1][1]]),
@@ -84,11 +93,10 @@ def load_data_task(instance_str, file_path, fields, **kwargs):
         instance = apps.get_model(app_label='contact', model_name=instance_str)
         for _, row in res.iterrows():
             instance.objects.create(**row.to_dict()).save()
-
-    drop_duplecates.delay(instance_str=instance_str)
     
     os.remove(file_path)
     logger.info(f"- - - - FINISH loading - - - -")
+    drop_duplecates.delay(instance_str=instance_str)
 
 @app.task(ignore_result=True)
 def set_task(task, instance_str, contact_ids):

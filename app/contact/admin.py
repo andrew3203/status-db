@@ -28,9 +28,9 @@ class PhoneFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 1:
-            return queryset.exclude(tel=None)
+            return queryset.filter(tel__isnull = False)
         elif self.value() == 0:
-            return queryset.filter(tel=None)
+            return queryset.filter(tel__isnull = True)
         else:
             return queryset
 
@@ -41,9 +41,9 @@ class EmailFilter(PhoneFilter):
 
     def queryset(self, request, queryset):
         if self.value() == 1:
-            return queryset.exclude(email=None)
+            return queryset.filter(email__isnull=False)
         elif self.value() == 0:
-            return queryset.filter(email=None)
+            return queryset.filter(email__isnull=True)
         else:
             return queryset
 
