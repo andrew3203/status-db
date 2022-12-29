@@ -24,25 +24,28 @@ class PhoneFilter(SimpleListFilter):
     parameter_name = 'obj_phone'
 
     def lookups(self, request, model_admin):
-        return [(1, 'Есть'), (0, 'Нет')]
+        return (('1', 'Есть'), ('0', 'Нет'))
 
     def queryset(self, request, queryset):
-        if self.value() == 1:
-            return queryset.filter(tel__isnull = False)
-        elif self.value() == 0:
+        if self.value() == '1':
+            return queryset.filter(tel__isnull = False).exclude(tel='')
+        elif self.value() == '0':
             return queryset.filter(tel__isnull = True)
         else:
             return queryset
 
 
-class EmailFilter(PhoneFilter):
+class EmailFilter(SimpleListFilter):
     title = 'Почта'
     parameter_name = 'obj_mail'
 
+    def lookups(self, request, model_admin):
+        return (('1', 'Есть'), ('0', 'Нет'))
+
     def queryset(self, request, queryset):
-        if self.value() == 1:
-            return queryset.filter(email__isnull=False)
-        elif self.value() == 0:
+        if self.value() == '1':
+            return queryset.filter(email__isnull=False).exclude(email='')
+        elif self.value() == '0':
             return queryset.filter(email__isnull=True)
         else:
             return queryset
@@ -120,7 +123,7 @@ def _load_wh_tg(self, request, instance_str):
         else:
             return render(request, 'admin/load_wh_tg.html', {'form': form})
     else:
-        form =  LoadTgWhForm(initial={'_instance_str': instance_str })
+        form = LoadTgWhForm(initial={'_instance_str': instance_str })
         return render(request, "admin/load_wh_tg.html", {'form': form})
 
 
