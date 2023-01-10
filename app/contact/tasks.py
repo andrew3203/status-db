@@ -98,6 +98,18 @@ def load_data_task(instance_str, file_path, fields, **kwargs):
     logger.info(f"- - - - FINISH loading - - - -")
     drop_duplecates.delay(instance_str=instance_str)
 
+
+@app.task(ignore_result=True)
+def load_data_task2(instance_str, data):
+    logger.info(f"- - - - START loading - - - -")
+    instance = apps.get_model(app_label='contact', model_name=instance_str)
+    for row in data:
+        instance.objects.create(**row).save()
+    
+    logger.info(f"- - - - FINISH loading - - - -")
+    drop_duplecates.delay(instance_str=instance_str)
+
+
 @app.task(ignore_result=True)
 def set_task(task, instance_str, contact_ids):
     instance = apps.get_model(app_label='contact', model_name=instance_str)
