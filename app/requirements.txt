@@ -27,7 +27,7 @@ django-ckeditor
 # Server
 gunicorn==20.1.0
 
-pandas==1.5.2
+pandas==1.3.4
 numpy==1.24.1
 openpyxl
 xlsxwriter
