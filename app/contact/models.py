@@ -19,7 +19,7 @@ class Contact(models.Model):
     )
     tel = models.CharField(
         verbose_name = 'Телефон',
-        max_length=20,
+        max_length=30,
         default=None, blank=True, null=True
     )
     email = models.CharField(
@@ -29,12 +29,12 @@ class Contact(models.Model):
     )
     tel2 = models.CharField(
         verbose_name = 'Доп. Телефон',
-        max_length=20,
+        max_length=30,
         default=None, blank=True, null=True
     )
     email2 = models.CharField(
         verbose_name = 'Доп. Почта',
-        max_length=20,
+        max_length=30,
         default=None, blank=True, null=True
     )
 
@@ -44,7 +44,7 @@ class Contact(models.Model):
     )
     tg_username = models.CharField(
         verbose_name = 'Телеграм',
-        max_length=20,
+        max_length=30,
         default=None, blank=True, null=True
     )
 
@@ -79,7 +79,7 @@ class Contact(models.Model):
     )
     task = models.CharField(
         'Задача',
-        max_length=25,
+        max_length=40,
         choices=TaskType.choices,
         default=None, blank=True, null=True
     )
