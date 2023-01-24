@@ -31,18 +31,23 @@ def _parse_phone(x):
     return x
 
 def parse_info(el, phone_name_filed, email_name_filed, fio_name_filed):
-    raw_phones = re.sub('\(|\)|-| |\+', '', str(el[phone_name_filed]))
+    raw_phone = re.sub('\(|\)|-| |\+', '', str(el[phone_name_filed]))
     phones = list(
         map(
-            lambda phone: _parse_phone(phone), 
-            re.findall(PHONE, raw_phones)
+            lambda phone: _parse_phone(phone)[:20], 
+            re.findall(PHONE, raw_phone)
         )
     )
-    mails = re.findall(MAIL, str(el[email_name_filed]))
-    fio = re.sub('\(|\)|-|\+|[a-z0-9]|\\n', '', str(el[fio_name_filed]))
     phones = phones + [None]*(3-len(phones))
+
+    mails = re.findall(MAIL, str(el[email_name_filed]))
+    mails = list(map(lambda x: str(x)[:30], mails))
     mails = mails + [None]*(3-len(mails))  
-    data = pd.Series({'fio': fio, 'tel': phones[0][:30], 'tel2': phones[1][:30], 'email': mails[0][:30],'email2': mails[1][:30]})
+   
+    fio = re.sub('\(|\)|-|\+|[a-z0-9]|\\n', '', str(el[fio_name_filed]))
+
+    data = pd.Series({'fio': fio, 'tel': phones[0], 'tel2': phones[1], 'email': mails[0],'email2': mails[1]})
+    
     return data
 
 
